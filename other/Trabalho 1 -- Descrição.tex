@@ -1,0 +1,210 @@
+% LaTex source code
+% vim:set et sw=4 ts=8 tw=78:
+% File: "Trabalho 1 -- Descrição.tex"
+% Created: "Dom, 13 Set 2015 23:28:11 -0300 (kassick)"
+% Updated: "2017-10-26 16:45:04 kassick"
+% $Id$
+% Copyright (C) 2015, Rodrigo Virote Kassick <rvkassick@inf.ufrgs.br>
+
+\documentclass[a4paper, oneside,12pt]{article}
+\usepackage[portuguese]{babel}
+\usepackage[]{hyphenat}
+\usepackage{ifxetex}
+\usepackage{listings}
+\usepackage[%
+        bookmarksnumbered=true,
+        breaklinks=true,
+        unicode=true,
+        colorlinks=true,
+        anchorcolor=black,
+        citecolor=black,
+        filecolor=black,
+        linkcolor=black,
+        urlcolor=black
+]{hyperref}[2009/10/09]
+\usepackage{enumitem}
+\usepackage[sharp]{easylist}
+\usepackage{multicol}
+\usepackage{mathtools}
+\usepackage{amsmath,amssymb,latexsym}         % simbolos, fontes, etc
+\usepackage{wasysym}
+%\usepackage{circuitikz}
+%\usepackage{amsmath}
+\usepackage{indentfirst}
+
+\ifxetex
+    \usepackage{tgtermes}
+\else
+    \usepackage[utf-8]{inputenc}
+    \usepackage{times}              % pacote para usar fonte Adobe Times
+    \usepackage[T1]{fontenc}
+\fi
+
+\usepackage[university={Uniritter -- Laureate International Universities$^{\noexpand\circledR}$},
+            institute={Faculdade de Informática},
+            courseid=INF0024,
+            coursename={Sistemas Operacionais II},
+            professorname={Rodrigo Kassick},
+            %class={PNA},
+            %semester={2015-2},
+            border=false,
+            gradingtable=false,
+            sectionname={Exercício},
+            description={Trabalho Prático 1},
+            date={}]{unitest}
+\begin{document}
+
+\finishgrading    % Evita que apareça nome de aluno no topo da página
+
+\section{Descrição do Problema} \label{sec:desc_prob}
+
+Um sistema operacional deve gerenciar os processos ativos e decidir quando
+eles devem executar no processador.
+
+Cada processo, quando observado externamente ao sistema operacional, efetua uma seqüência de operações na CPU e, em algum momento, faz uma requisição de I/O que o força a ficar em espera (\textbf{bloqueado}). Ao \emph{tempo} que o processo leva executando operações na CPU damos o nome de \textbf{CPU Burst}.  O tempo que o processo passa \emph{esperando que uma requisição de I/O complete} damos o nome de \textbf{I/O burst}.
+
+Ao processo do sistema operacional que \emph{escolhe} um processo para executar e o coloca na CPU damos o nome de \emph{escalonamento}.
+
+A função de escalonamento de um sistema operacional toma como entrada a lista de processos e, opcionalmente, informações coletadas sobre o comportamento \emph{passado} de cada processo. O seu retorno é o processo que deverá ganhar a CPU.
+
+Após a decisão de escalonamento, o sistema operacional passa o controle da CPU para o processo escolhido, efetuando a \emph{troca de contexto} e efetuando colocando o processo escolhido na CPU, numa função chamada de \emph{dispatch}.
+
+O sistema operacional pode escolher entregar a CPU ao processo e esperar até que ele bloqueie fazendo alguma operação de I/O ou definir um {\em tempo máximo} (configurar um {\em timer}) que o processo poderá permanecer na CPU.
+
+O processo também pode, a qualquer momento, ser \emph{interrompido} por que algum dispositivo enviou notificação de \textbf{interrupção} à CPU, avisando que alguma tarefa (por exemplo, I/O) completou.
+
+Quando o processo é interrompido pelo \emph{timer} ou por alguma {\em interrupção}, o sistema operacional deve tomar, novamente, uma decisão de escalonamento.
+
+Quando o sistema operacional não configura um \emph{timer} e, caso haja uma interrupção, ele sempre opte por seguir a execução do processo atual, o escalonamento é chamado de \emph{não preemptivo}.
+
+Caso o processo possa ser interrompido por algo que não foi causado por ele (i.e. algo que não foi uma operação de I/O bloqueante), dizemos que o escalonamento é \emph{preemptivo}.
+
+O trabalho prático 1 consistirá na implementação de um algoritmo de escalonamento, simulando a troca de contexto entre processos conforme as decisões de escalonamento e bloqueios em função de I/O
+
+\section{Definições}
+\label{sec:definicoes}
+
+\begin{description}
+    \item [Algoritmo de Escalonamento] -- O algoritmo de escalonamento será o \emph{Multi-level Feedback Queue}, composto de uma fila \emph{Round-Robin} de \emph{quantum} 10, uma \emph{Round-Robin} de {\em quantum} 20 e uma \emph{FIFO}.
+
+    \item [Fila Inicial] -- Todo processo "novo" é é inserido, inicialmente, na primeira fila (RR-10).
+
+    \item [Prioridade das Filas] -- Sempre que houverem processos disponíveis na fila RR-10, o escalonador deve selecionar o primeiro deles para executar.
+
+        Quando a file RR-10 estiver vazia, o escalonador deve selecionar o primeiro processo da fila RR-20. Enquanto a fila RR-10 estiver vazia, o escalonador executa processos da fila RR-20.
+
+        Quando as filas RR-20 e RR-10 estiverem vazias, o escalonador seleciona um processo da fila FIFO e o põe a executar.
+
+    \item [Tempo máximo de Execução] -- Um processo da fila RR-10 selecionado para executar pode executar por, \textbf{no máximo}, 10~mili-segundos. Processos da RR-20, 20~mili-segundos. Processos da fila FIFO não possuem limite de tempo de execução
+
+    \item[Rebaixamento de Processos] -- Quando um processo da fila RR-10 utiliza todo o \emph{quantum} por duas decisões de escalonamento consecutivas, ele é removido da fila RR-10 e colocado na fila RR-20.
+
+        O mesmo vale para a fila RR-20: se o processo utiliza todo o quantum por 2 vezes consecutivas, ele é movido para a fila FIFO.
+
+    \item[Ageing] -- Todo processo que passar 100~mili-segundos em uma fila sem ganhar a CPU deve ser movido para a fila de maior prioridade ($\textrm{FIFO} < \textrm{RR-20} < \textrm{RR-10}$).
+
+    \item[Processos bloqueados] -- Processos bloqueados não devem aparecer em nenhuma das filas, pois não estão em estado \emph{READY}.
+\end{description}
+
+\section{Modelagem dos Processos}
+
+Cada processo será uma \emph{função} que simula a execução do processo por
+um tempo máximo. Para simular os CPU e I/O bursts de cada processo, cada um
+possuirá vetores previamente preenchidos com os tempos de cada burst.
+
+Exemplo:
+
+\begin{lstlisting}[language=C]
+    struct proc_t {
+        int id;
+        int time_blocked; // inicializado com 0
+        int status; // READY, BLOCKED
+        // ...
+        int n_cpu_bursts, n_io_bursts;
+    };
+
+    ...
+
+    struct proc_t processes[10];
+
+    int proc_0(int quanta) {
+        static int cpu_burst_i = 0, io_burst_i = 0;
+        int time_in_cpu;
+
+        time_in_cpu = MIN( cpu_bursts_0[cpu_burst_i], quanta );
+
+        printf("Processo 0 ganhou a CPU\n");
+        usleep(time_in_cpu);
+        printf("Processo 0 ficou na CPU por %dms\n", time_in_cpu);
+
+        cpu_bursts_0[cpu_burst_i] -= time_in_cpu;
+
+        if (cpu_bursts_0[cpu_burst_i] == 0) {
+            cpu_burst_i++;
+
+            if (processes[0].n_cpu_bursts == cpu_burst_i) {
+                processes[0].status = FINISHED;
+                return 0; // 0 significa processo finalizado
+            } else {
+                processes[0].status = BLOCKED;
+                processes[0].time_blocked = io_bursts_0[io_burst_i];
+                io_burst_i++.
+                return -1; // -1 avisa o escalonador que o processo bloqueou
+            }
+        } else {
+            return time_in_cpu; // processo não concluiu seu CPU burst,
+                                // retorno >0
+        }
+    }
+\end{lstlisting}
+
+Quando um processo é \emph{bloqueado}, ele deve esperar ao menos \texttt{time\_blocked} mili-segundos para entrar novamente em alguma das filas. Esse tempo pode ser contabilizado com o tempo que cada processo \textbf{não bloqueado} passou na CPU.
+
+\section{Funcionamento do Trabalho}
+\label{sec:func}
+
+O programa deve ler um arquivo por processo contendo os tempos de CPU e de I/O bursts.
+
+O programa deve produzir uma saída informando das decisões de escalonamento. Exemplo:
+\begin{verbatim}
+    Tempo 156: Escolheu processo 2 da fila RR-20
+    Tempo 176: Processo 2 completou seu quanta
+    Tempo 176: Escolheu processo 3 da fila RR-20
+    Tempo 179: Processo 3 completou antes do quanta
+    Tempo 179: Processo 3 promovido para fila RR-10
+    Tempo 179: Processo 0 passou 50ms bloqueado
+    Tempo 179: Processo 0 entra na fila RR-10
+    Tempo 179: Escolheu processo 3 da fila RR-10
+    ...
+\end{verbatim}
+
+
+Ao fim da execução, o programa deve apresentar o tempo que cada processo passou em espera nas filas, bem como a fila final do processo. Exemplo:
+\begin{verbatim}
+    Processo 0: 600ms na CPU, 300ms de Espera, fila FIFO
+    Processo 1: 100ms na CPU, 10ms de Espera, Fila RR-10
+    ...
+\end{verbatim}
+
+\section{Regras}
+
+\begin{description}
+    \item[Linguagem] Livre\footnote{Excetuando-se qualquer uma das linguagens listadas em \url{https://en.wikipedia.org/wiki/Category:Esoteric_programming_languages}}
+    \item[Avaliação] será baseada em:
+        \begin{itemize}
+            \item Funcionamento correto do código
+            \item Compreensão do problema
+            \item Compreensão do comportamento dos processos em função de seus I/O e CPU bursts.
+        \end{itemize}
+
+\end{description}
+\label{sec:prazos}
+
+
+
+
+
+
+
+
+\end{document}
