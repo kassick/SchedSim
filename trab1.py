@@ -3,7 +3,7 @@
 
 # File: "trab1.py"
 # Created: "Qui, 24 Set 2015 14:57:44 -0300 (kassick)"
-# Updated: "2017-11-17 11:52:19 kassick"
+# Updated: "2018-08-09 18:21:18 kassick"
 # $Id$
 # Copyright (C) 2015, Rodrigo Virote Kassick <rvkassick@inf.ufrgs.br>
 #
@@ -18,11 +18,6 @@ Options:
     -n nprocs       Number of processes [default: 2]
     -d testdir      Directory where to find the test files [default: ./]
 """
-
-from venv_util import *
-
-env_dir = venv_dir(__file__, 'env')
-activate_env(env_dir)
 
 import os
 import sys
